@@ -1,1 +1,1 @@
-# csc311-machine-learning-project
+# CSC311 Machine Learning Project

@@ -16,7 +16,8 @@
         "room"
     ],
     "text_features": [
-        "combined_text"
+        "moods_text",
+        "story_text"
     ],
     "one_hot_categories": {
         "season": [

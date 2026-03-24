@@ -70,16 +70,26 @@ def preprocess_data(df, assets):
     """
     Applies all preprocessing steps to the input DataFrame.
     """
-    # Combine text features first, same as in training
+    # Rename columns to match training, just in case test data has long names
+    df.rename(columns={
+        'On a scale of 1–10, how intense is the emotion conveyed by the artwork?': 'impression_rating',
+        'How much (in Canadian dollars) would you be willing to pay for this painting?': 'price',
+        'What season does this art piece remind you of?': 'season',
+        'If you could purchase this painting, which room would you put that painting in?': 'room',
+        'Describe how this painting makes you feel.': 'moods_text',
+        'Imagine a soundtrack for this painting. Describe that soundtrack without naming any objects in the painting.': 'story_text'
+    }, inplace=True)
+
+    # Combine text features first, using the list from assets
     df['combined_text'] = df[assets["text_features"]].fillna('').agg(' '.join, axis=1)
 
     # Impute missing values
     for col in assets["numerical_features"]:
         # Coerce to numeric, as test data might also have bad values
         df[col] = pd.to_numeric(df[col], errors='coerce')
-        df[col].fillna(assets["imputation_means"][col], inplace=True)
+        df[col] = df[col].fillna(assets["imputation_means"][col])
     for col in assets["categorical_features"]:
-        df[col].fillna(assets["imputation_modes"][col], inplace=True)
+        df[col] = df[col].fillna(assets["imputation_modes"][col])
 
     # One-Hot Encode categorical features
     ohe_features = []
@@ -138,8 +148,10 @@ def predict_all(csv_file_path: str):
     # Load assets
     assets = load_model_assets()
     
-    # Load and preprocess data
+    # Load data
     df = pd.read_csv(csv_file_path)
+    
+    # Preprocess data
     X_processed = preprocess_data(df.copy(), assets)
     
     # Make predictions
@@ -154,4 +166,24 @@ if __name__ == '__main__':
     # For example:
     # predictions = predict_all('path/to/your/test_data.csv')
     # print(predictions)
-    pass
+    # pass
+
+    test_file = 'test_sample.csv'
+    
+    try:
+        # 2. Run the prediction function
+        predictions_indices = predict_all(test_file)
+        print(f"Raw prediction indices: {predictions_indices}")
+
+        # 3. (Optional) Map indices to class names for better readability
+        with open('model_params.json', 'r') as f:
+            params = json.load(f)
+        class_labels = params['classes']
+        
+        predicted_artists = [class_labels[i] for i in predictions_indices]
+        print(f"Predicted artists: {predicted_artists}")
+
+    except FileNotFoundError:
+        print(f"Error: Make sure '{test_file}' exists in the current directory.")
+    except Exception as e:
+        print(f"An error occurred: {e}")

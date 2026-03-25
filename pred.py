@@ -2,6 +2,8 @@ import pandas as pd
 import pickle
 import re
 
+#NOTE: our group found a Piazza post (question @269) confirming that we can use/import pickle in pred.py
+
 # Load in our trained model and preprocessing objects from the files
 try:
     with open('final_model.pkl', 'rb') as f:

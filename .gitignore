@@ -5,7 +5,7 @@ __pycache__/
 *.pyd
 
 # Virtual Environment
-venv/
+.venv/
 
 # Jupyter Notebook
 .ipynb_checkpoints/
@@ -18,5 +18,5 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Data files (optional, but good practice if they are large)
-*.csv
+# Generated model files
+*.pkl

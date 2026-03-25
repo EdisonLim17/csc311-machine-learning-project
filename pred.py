@@ -1,14 +1,17 @@
 import pandas as pd
-import joblib
+import pickle
 import re
 
 # Load the trained model and preprocessing objects from the files
 try:
-    model = joblib.load('final_model.joblib')
-    preprocessor = joblib.load('final_preprocessor.joblib')
-    label_encoder = joblib.load('final_label_encoder.joblib')
+    with open('final_model.pkl', 'rb') as f:
+        model = pickle.load(f)
+    with open('final_preprocessor.pkl', 'rb') as f:
+        preprocessor = pickle.load(f)
+    with open('final_label_encoder.pkl', 'rb') as f:
+        label_encoder = pickle.load(f)
 except FileNotFoundError:
-    print("Error: Make sure 'final_model.joblib', 'final_preprocessor.joblib', and 'final_label_encoder.joblib' are in the same directory.")
+    print("Error: Make sure 'final_model.pkl', 'final_preprocessor.pkl', and 'final_label_encoder.pkl' are in the same directory.")
     exit()
 
 def feature_engineer(df):
@@ -37,9 +40,10 @@ def feature_engineer(df):
     df['price'] = df['price'].apply(clean_price)
 
     # 3. Combine text columns into a single feature
+    # Use the same short column names as defined in the training notebook
     text_cols = [
-        "Describe how this painting makes you feel.",
-        "Imagine a soundtrack for this painting. Describe that soundtrack without naming any objects in the painting."
+        "moods_text",
+        "story_text"
     ]
     # Fill any missing text with an empty string before combining
     df['combined_text'] = df[text_cols].fillna('').agg(' '.join, axis=1)

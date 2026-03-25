@@ -1,14 +1,15 @@
+#local script to test pred.py
+
 import pandas as pd
 from pred import predict_all
 
-# The name of the file you just created
+
 test_filename = 'test_data.csv'
 
-# --- Get the Predictions ---
-# Call the prediction function from your pred.py script
+
 predictions = predict_all(test_filename)
 
-# --- Calculate Accuracy ---
+
 if isinstance(predictions, list):
     try:
         # Load the test data to get the true labels
@@ -39,5 +40,4 @@ if isinstance(predictions, list):
         print("Please ensure 'test_data.csv' exists and contains an 'artist' column.")
 
 else:
-    # This will print any error message returned by predict_all
     print(predictions)

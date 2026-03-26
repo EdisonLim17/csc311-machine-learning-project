@@ -2,8 +2,9 @@ import pandas as pd
 import pickle
 import re
 import math
+# Note: Our group found a discussion thread on Piazza indicating we're allowed to import pickle for the pred.py script
 
-# --- Load all necessary artifacts ---
+# Load in our trained model and preprocessing objects from the 3 pickle files
 try:
     with open('rf_manual_model.pkl', 'rb') as f:
         forest_structure = pickle.load(f)
@@ -15,7 +16,7 @@ except FileNotFoundError as e:
     print(f"Error: A required .pkl file is missing: {e}")
     exit()
 
-# --- Manual Preprocessing Functions ---
+# Functions for manual preprocessing
 
 def manual_impute_and_scale(df, params):
     """
@@ -25,7 +26,6 @@ def manual_impute_and_scale(df, params):
     scaler_means = params['mean_']
     scaler_scales = params['scale_']
     
-    # Create a copy to avoid modifying the original DataFrame slice
     df_copy = df.copy()
     
     # Impute and scale each column
@@ -43,21 +43,20 @@ def manual_one_hot_encode(df, params):
     encoded_matrix = []
     all_categories = params['categories_']
     
-    # These are the categories the model was trained on.
     room_cats = all_categories[0]
     season_cats = all_categories[1]
     
     for index, row in df.iterrows():
         encoded_row = []
         
-        # Encode 'room'
+        # Encode room
         for cat in room_cats:
-            # The value is 1 only if the row's value matches a known category.
+
             encoded_row.append(1.0 if row['room'] == cat else 0.0)
             
-        # Encode 'season'
+        # Encode season
         for cat in season_cats:
-            # The value is 1 only if the row's value matches a known category.
+
             encoded_row.append(1.0 if row['season'] == cat else 0.0)
             
         encoded_matrix.append(encoded_row)
@@ -71,19 +70,16 @@ def manual_tfidf(series, params):
     idf = params['idf_']
     num_vocab = len(vocab)
     
-    # sklearn's default token pattern is r"(?u)\b\w\w+\b"
-    # We will use a simplified version that is functionally equivalent here.
+    # use a simplified version of sklearn's default token pattern
     token_pattern = re.compile(r'\b\w\w+\b')
 
     tfidf_matrix = []
     for text in series:
-        # 1. Lowercase the text, just like sklearn does by default.
+
         text = text.lower()
-        
-        # 2. Find all tokens
         tokens = token_pattern.findall(text)
         
-        # 3. Calculate term frequencies (TF)
+        #Calculate term frequencies
         tf = [0.0] * num_vocab
         if len(tokens) > 0:
             word_counts = {}
@@ -94,10 +90,10 @@ def manual_tfidf(series, params):
                 if word in vocab:
                     tf[vocab[word]] = count / len(tokens)
         
-        # 4. Calculate TF-IDF
+        # TF-IDF
         tfidf_row = [tf[i] * idf[i] for i in range(num_vocab)]
         
-        # 5. L2 normalization (same as before)
+        #L2 normalization
         norm = math.sqrt(sum(x**2 for x in tfidf_row))
         if norm > 0:
             tfidf_row = [x / norm for x in tfidf_row]
@@ -108,28 +104,27 @@ def manual_tfidf(series, params):
 def manual_preprocess(df, components):
     """Combines all manual preprocessing steps for ALL features."""
     
-    # 1. Numerical features (processing BOTH 'impression_rating' and 'price')
+    #Numerical features 
     numerical_features = ['impression_rating', 'price']
     scaled_numerical = manual_impute_and_scale(df[numerical_features], components['numeric'])
 
-    # 2. Categorical features
+    # Categorical features
     categorical_features = ['room', 'season']
     ohe_matrix = manual_one_hot_encode(df[categorical_features], components['onehot'])
 
-    # 3. Text features
+    #Text features
     tfidf_matrix = manual_tfidf(df['combined_text'], components['tfidf'])
 
-    # 4. Combine all features into a single matrix
+    #combine into a single matrix
     combined_matrix = []
     for i in range(len(df)):
-        # The order must be exactly what the model was trained on.
-        # Order: numeric, categorical, text
+        # Preserve order
         row = scaled_numerical[i] + ohe_matrix[i] + tfidf_matrix[i]
         combined_matrix.append(row)
         
     return combined_matrix
 
-# --- Feature Engineering and Prediction Logic (from before) ---
+# Prediction Logic
 
 def feature_engineer(df):
     """
@@ -159,7 +154,7 @@ def feature_engineer(df):
         return price 
 
     df['price'] = df['price'].apply(clean_price)
-    # DO NOT IMPUTE HERE. Imputation must use training set data.
+    # note: Imputation must use training set data
     
     text_cols = ["moods_text", "story_text"]
     existing_text_cols = [col for col in text_cols if col in df.columns]
@@ -182,21 +177,19 @@ def predict_single_tree(tree_data, single_row):
     leaf_values = tree_data['value'][node_index][0]
     return leaf_values.index(max(leaf_values))
 
-# --- Main Prediction Function ---
-
 def predict_all(filename):
     try:
         df = pd.read_csv(filename)
     except FileNotFoundError:
         return f"Error: The file '{filename}' was not found."
     
-    # 1. Feature Engineering
+    # call feature_engineer
     df_engineered = feature_engineer(df)
 
-    # 2. Manual Preprocessing
+    # preprocess manually
     X_processed = manual_preprocess(df_engineered, preprocessor_components)
 
-    # 3. Manual Random Forest Prediction
+    # predict using random forest
     final_predictions_encoded = []
     for row in X_processed:
         tree_predictions = []
@@ -206,6 +199,5 @@ def predict_all(filename):
         majority_vote = max(set(tree_predictions), key=tree_predictions.count)
         final_predictions_encoded.append(majority_vote)
 
-    # 4. Decode predictions using the list of classes as a lookup table
     final_predictions_decoded = [label_encoder_classes[i] for i in final_predictions_encoded]
     return final_predictions_decoded
